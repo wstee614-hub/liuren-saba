@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大六壬赛事推演</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@700;900&display=swap">
+<style>
+/* Layout: two columns on desktop (inputs left, results right), one column on phones. Deliberately single dark theme. */
+:root{--bg:#0b1120;--card:#111827;--line:#1f2a3c;--ink:#e2e8f0;--mute:#94a3b8;--home:#34d399;--away:#22d3ee;--warn:#fbbf24;--bad:#f87171;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans SC",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
+.serif{font-family:"Noto Serif SC","Songti SC",serif}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.inp{width:100%;background:#0f172a;border:1px solid #334155;border-radius:10px;padding:.55rem .7rem;font-size:14px;color:var(--ink);min-width:0}
+.inp:focus{outline:2px solid #10b981;outline-offset:1px}
+.lbl{display:block;font-size:12px;color:var(--mute);margin-bottom:4px}
+.tab{font-variant-numeric:tabular-nums}
+.pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid #334155;color:var(--mute);white-space:nowrap}
+.ok{color:var(--home)}.no{color:var(--bad)}
+.mini td,.mini th{padding:3px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+button:focus-visible{outline:2px solid #10b981;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="border-b" style="border-color:var(--line)">
+  <div class="max-w-6xl mx-auto px-4 py-4">
+    <h1 class="serif text-xl font-black tracking-wide">大六壬赛事推演</h1>
+    <p class="text-xs mt-1" style="color:var(--mute)">SABA 188 Club Friendly Virtual PES 21 · 真实排盘 + 手动盘口 + 赛果记录</p>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <section class="lg:col-span-5 space-y-5 min-w-0">
+    <div class="card p-5 space-y-4">
+      <h2 class="font-bold">比赛设定</h2>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="min-w-0"><span class="lbl">日期（马来西亚时间）</span><input id="d" type="date" class="inp"></label>
+        <label class="min-w-0"><span class="lbl">开球时间</span><input id="t" type="time" class="inp"></label>
+      </div>
+      <label class="flex items-center gap-2 text-sm" style="color:var(--mute)"><input id="follow" type="checkbox" checked> 自动跟随当前时间</label>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="space-y-2 p-3 rounded-xl" style="background:#0f172a;border:1px solid var(--line)">
+          <span class="text-xs font-bold" style="color:var(--home)">主队</span>
+          <select id="hl" class="inp"></select><select id="ht" class="inp"></select>
+        </div>
+        <div class="space-y-2 p-3 rounded-xl" style="background:#0f172a;border:1px solid var(--line)">
+          <span class="text-xs font-bold" style="color:var(--away)">客队</span>
+          <select id="al" class="inp"></select><select id="at" class="inp"></select>
+        </div>
+      </div>
+      <label class="block"><span class="lbl">金口诀地分</span><select id="df" class="inp"></select></label>
+      <div>
+        <span class="lbl">赔率（选填，从平台抄入，欧赔小数）</span>
+        <div class="grid grid-cols-3 gap-2">
+          <input id="o1" class="inp tab" inputmode="decimal" placeholder="主胜 如 2.10">
+          <input id="ox" class="inp tab" inputmode="decimal" placeholder="和 如 3.30">
+          <input id="o2" class="inp tab" inputmode="decimal" placeholder="客胜 如 3.00">
+        </div>
+      </div>
+      <p id="err" class="text-sm no" hidden></p>
+    </div>
+
+    <div class="card p-5 space-y-3">
+      <h2 class="font-bold">赛果记录 <span class="text-xs font-normal" style="color:var(--mute)">· 保存在这台设备</span></h2>
+      <p class="text-xs" style="color:var(--mute)">每行一场：<code>2026-10-02 12:15|Real Sociedad|CA Osasuna|1:1</code>，队名用 SABA 英文名。已预载 10/2 的 68 场。</p>
+      <textarea id="log" rows="6" class="inp tab" style="font-size:12px;font-family:ui-monospace,monospace"></textarea>
+      <div class="flex flex-wrap gap-2">
+        <button id="saveLog" class="px-3 py-2 rounded-lg text-sm font-medium" style="background:#10b981;color:#052e1f">保存记录</button>
+        <button id="resetLog" class="px-3 py-2 rounded-lg text-sm" style="border:1px solid #334155">恢复预载</button>
+        <span id="logMsg" class="text-xs self-center" style="color:var(--mute)"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="lg:col-span-7 space-y-5 min-w-0">
+    <div class="card p-5">
+      <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-center">
+        <div class="min-w-0"><div id="hn" class="font-bold break-words" style="color:var(--home)"></div><div class="text-xs" style="color:var(--mute)">主</div></div>
+        <div><div id="score" class="serif text-5xl font-black tab">– : –</div><div id="res" class="text-sm mt-1"></div></div>
+        <div class="min-w-0"><div id="an" class="font-bold break-words" style="color:var(--away)"></div><div class="text-xs" style="color:var(--mute)">客</div></div>
+      </div>
+      <p id="when" class="text-xs text-center mt-3" style="color:var(--mute)"></p>
+      <p id="extra" class="text-xs text-center mt-1" style="color:var(--mute)"></p>
+    </div>
+
+    <div class="card p-5 space-y-3">
+      <h3 class="font-bold">一 · 大六壬排盘</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div><span class="lbl">日干支</span><b id="gz"></b></div>
+        <div><span class="lbl">占时 · 月将</span><b id="sj"></b></div>
+        <div><span class="lbl">课体</span><b id="kt" style="color:var(--warn)"></b></div>
+        <div><span class="lbl">旬空</span><b id="kg"></b></div>
+      </div>
+      <div class="overflow-x-auto"><table class="mini text-sm tab"><thead><tr style="color:var(--mute)"><th></th><th>四课</th><th>一</th><th>二</th><th>三</th><th>四</th></tr></thead><tbody id="ke"></tbody></table></div>
+      <div id="sc" class="text-sm"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs" id="steps"></div>
+      <div class="text-xs" id="judge"></div>
+    </div>
+
+    <div class="card p-5 space-y-2">
+      <h3 class="font-bold">二 · 盘口</h3>
+      <div id="odds" class="text-sm"></div>
+    </div>
+
+    <div class="card p-5 space-y-2">
+      <h3 class="font-bold">三 · 赛果记录：交锋与近况</h3>
+      <div id="hist" class="text-sm space-y-2"></div>
+    </div>
+
+    <div class="card p-5 space-y-2">
+      <h3 class="font-bold">四 · 命中记录</h3>
+      <div id="rec" class="text-sm"></div>
+    </div>
+
+    <div class="card p-5 space-y-3">
+      <h3 class="font-bold">五 · AI 解读（Gemini）</h3>
+      <p class="text-xs" style="color:var(--mute)">把这一场的排盘、取数过程、赔率和近况交给 Gemini，用文字整理断课思路。AI 只负责解读，不改动上面的比分。</p>
+      <div class="flex flex-wrap gap-2">
+        <input id="gkey" type="password" autocomplete="off" class="inp" style="flex:1 1 220px" placeholder="贴上你的 Gemini API 金钥">
+        <button id="gsave" class="px-3 py-2 rounded-lg text-sm" style="border:1px solid #334155">保存金钥</button>
+        <button id="gforget" class="px-3 py-2 rounded-lg text-sm" style="border:1px solid #334155">删除金钥</button>
+      </div>
+      <p class="text-xs" style="color:var(--mute)">金钥只存在这台设备的浏览器里，不会写进网页代码，别人打开你的网页也看不到。</p>
+      <button id="gask" class="px-4 py-2 rounded-lg text-sm font-medium" style="background:#22d3ee;color:#042f36">生成 AI 解读</button>
+      <div id="gout" class="text-sm whitespace-pre-wrap leading-relaxed p-3 rounded-lg" style="background:#0f172a" hidden></div>
+    </div>
+
+    <p class="text-xs" style="color:var(--mute)">比分由大六壬规则取数：每队以本命上神为用神，一象一球；胜负以我他生克与金口诀断。盘口和赛果只作对照，不改动六壬结果。虚拟赛结果由系统随机产生，本页不保证命中，只供娱乐。</p>
+  </section>
+</main>
+<script>
+const GAN='甲乙丙丁戊己庚辛壬癸'.split(''), ZHI='子丑寅卯辰巳午未申酉戌亥'.split('');
+const WXN='木火土金水'.split('');
+const GWX=[0,0,1,1,2,2,3,3,4,4], ZWX=[4,2,0,0,2,1,1,2,3,3,2,4];
+const JIGONG=[2,4,5,7,5,7,8,10,11,1];
+const LODGED={2:[0],4:[1],5:[2,4],7:[3,5],8:[6],10:[7],11:[8],1:[9]};
+const GENERALS=['贵人','螣蛇','朱雀','六合','勾陈','青龙','天空','白虎','太常','玄武','太阴','天后'];
+const GUIREN=[[1,7],[0,8],[11,9],[11,9],[1,7],[0,8],[1,7],[6,2],[5,3],[5,3]];
+const XING={0:3,3:0,2:5,5:8,8:2,1:10,10:7,7:1,4:4,6:6,9:9,11:11};
+const SANHE=[[8,0,4],[11,3,7],[2,6,10],[5,9,1]];
+const YIMA=[2,5,8,11]; // per SANHE group: 申子辰→寅, 亥卯未→巳, 寅午戌→申, 巳酉丑→亥
+const mod=(a,n)=>((a%n)+n)%n;
+const ke=(a,b)=>mod(b-a,5)===2;     // a 克 b
+const sheng=(a,b)=>mod(b-a,5)===1;  // a 生 b
+const chong=b=>(b+6)%12;
+const ganzhi=i=>GAN[i%10]+ZHI[i%12];
+function group(b){return SANHE.findIndex(g=>g.includes(b))}
+function yima(b){return YIMA[group(b)]}
+function relWord(a,b){ if(a===b) return '比和'; if(sheng(a,b)) return '生'; if(ke(a,b)) return '克'; if(sheng(b,a)) return '受生于'; return '受克于'; }
+
+const JNAME=['神后','大吉','功曹','太冲','天罡','太乙','胜光','小吉','传送','从魁','河魁','登明'];
+const LQHINT={父母:'文书、合同、证件；房屋、车辆、长辈；学业、消息、保护、手续',妻财:'钱财、收益、货物；经营、交易、经济往来；男占也作妻子、女友',子孙:'结果、享受、放松；技术、才艺、行动成果；晚辈、下属、产品；解除压力',官鬼:'官职、压力、疾病、官司；女占也作丈夫、男友',兄弟:'同辈、朋友、合作、竞争'};
+const LQWHY={父母:'生我',子孙:'我生',妻财:'我克',官鬼:'克我',兄弟:'同我'};
+const zw=b=>ZHI[b]+WXN[ZWX[b]];
+function shangxia(up,downName,dwx){const u=ZWX[up];
+  if(ke(dwx,u)) return {t:'下贼上',s:`${downName}克${zw(up)}`};
+  if(ke(u,dwx)) return {t:'上克下',s:`${zw(up)}克${downName}`};
+  if(sheng(u,dwx)) return {t:'上生下',s:`${zw(up)}生${downName}`};
+  if(sheng(dwx,u)) return {t:'下生上',s:`${downName}生${zw(up)}`};
+  return {t:'比和',s:`${zw(up)}与${downName}比和`};}
+function pairRel(a,b){const r=[];
+  if(a===b){ if(XING[a]===a) r.push('自刑'); return r;}
+  if(mod(a-b,12)===6) r.push('冲'); if((a+b)%12===1) r.push('六合'); if((a+b)%12===7) r.push('害');
+  if(XING[a]===b||XING[b]===a) r.push('刑'); if(group(a)===group(b)) r.push('三合');
+  return r;}
+const KETI={
+  '元首课':'事情由上而下启动，主开始、命令、领导、主动推动。',
+  '重审课':'事情多有反复、审查、疑虑，需要重新判断。',
+  '比用课':'事情有多个线索或竞争因素，需要比较取用。',
+  '涉害课':'事情牵连较多，过程曲折，阻碍层层深入。',
+  '遥克课':'事情表面距离较远，暗中却有影响或牵制。',
+  '昴星课':'多主孤立、观察、分离，事情不易直接推进。',
+  '别责课':'事情有特殊原因，不能完全按常规判断。',
+  '八专课':'主专一、集中，也可能表示纠缠、偏执。',
+  '伏吟课':'事情反复、停滞、原地打转，内部消耗较多。',
+  '返吟课':'事情动荡、往返、反复，容易出现来去不定。'
+};
+
+function liuqin(gan,b){const a=GWX[gan],x=ZWX[b];
+  if(a===x) return '兄弟'; if(sheng(a,x)) return '子孙'; if(sheng(x,a)) return '父母'; if(ke(a,x)) return '妻财'; return '官鬼';}
+function wangshuai(monthZhi,b){const m=ZWX[monthZhi],x=ZWX[b];
+  if(m===x) return '旺'; if(sheng(m,x)) return '相'; if(sheng(x,m)) return '休'; if(ke(x,m)) return '囚'; return '死';}
+
+/* ---------- 历法 ---------- */
+function jdn(y,m,d){const a=Math.floor((14-m)/12),yy=y+4800-a,mm=m+12*a-3;
+  return d+Math.floor((153*mm+2)/5)+365*yy+Math.floor(yy/4)-Math.floor(yy/100)+Math.floor(yy/400)-32045;}
+function sunLon(utcMs){const jd=utcMs/86400000+2440587.5,n=jd-2451545,r=Math.PI/180;
+  const L=280.460+0.9856474*n,g=(357.528+0.9856003*n)*r;
+  return mod(L+1.915*Math.sin(g)+0.020*Math.sin(2*g),360);}
+function jiangFromLon(L){const k=Math.floor(mod(L-330,360)/30);return 11-k;}
+function monthFromLon(L){return mod(Math.floor(mod(L-315,360)/30)+2,12);}
+
+/* ---------- 起课核心 ---------- */
+function compute(dayIdx,shi,jiang,monthZhi){
+  const gan=dayIdx%10, zhi=dayIdx%12, yang=gan%2===0;
+  const tian=d=>mod(d-shi+jiang,12);
+  const seat=b=>mod(b-jiang+shi,12); // 天盘 b 所临地盘
+  const k1={up:tian(JIGONG[gan]),down:{t:'g',v:gan},dwx:GWX[gan]};
+  const k2={up:tian(k1.up),down:{t:'z',v:k1.up},dwx:ZWX[k1.up]};
+  const k3={up:tian(zhi),down:{t:'z',v:zhi},dwx:ZWX[zhi]};
+  const k4={up:tian(k3.up),down:{t:'z',v:k3.up},dwx:ZWX[k3.up]};
+  const kes=[k1,k2,k3,k4];
+  kes.forEach(k=>{const u=ZWX[k.up];k.zei=ke(k.dwx,u);k.kexia=ke(u,k.dwx);});
+  const uniq=a=>[...new Set(a)];
+  const zeiUps=uniq(kes.filter(k=>k.zei).map(k=>k.up));
+  const keUps=uniq(kes.filter(k=>k.kexia).map(k=>k.up));
+  const fuyin=jiang===shi, fanyin=mod(jiang-shi,12)===6;
+  let chu,zhong,mo,keti,detail='',special=false;
+
+  function shehaiDepth(b){let p=seat(b),c=0,n=0;
+    while(n<12){ if(ke(ZWX[p],ZWX[b])) c++; (LODGED[p]||[]).forEach(g=>{if(ke(GWX[g],ZWX[b]))c++;});
+      if(p===b) break; p=(p+1)%12; n++; }
+    return c;}
+  function pick(list){
+    if(list.length===1) return {b:list[0],how:'one'};
+    const bi=list.filter(b=>b%2===gan%2);
+    if(bi.length===1) return {b:bi[0],how:'比用',note:`${list.map(x=>ZHI[x]).join('、')}俱克，取与日干${yang?'阳':'阴'}同者${ZHI[bi[0]]}`};
+    const pool=bi.length?bi:list;
+    const ds=pool.map(b=>({b,d:shehaiDepth(b)}));
+    const max=Math.max(...ds.map(x=>x.d));
+    let top=ds.filter(x=>x.d===max).map(x=>x.b);
+    const dstr=ds.map(x=>`${ZHI[x.b]}受克${x.d}`).join('，');
+    if(top.length===1) return {b:top[0],how:'涉害',note:`涉害深浅：${dstr}，取最深者`};
+    const meng=top.filter(b=>seat(b)%3===2);
+    if(meng.length===1) return {b:meng[0],how:'涉害',note:`涉害深浅：${dstr}；深浅相同，取临四孟者（见机）`};
+    const zhongs=top.filter(b=>seat(b)%3===0);
+    if(meng.length===0&&zhongs.length===1) return {b:zhongs[0],how:'涉害',note:`涉害深浅：${dstr}；深浅相同，取临四仲者（察微）`};
+    const b=yang?k1.up:k3.up;
+    return {b,how:'涉害',note:`涉害深浅：${dstr}；仍相同，${yang?'阳日取干上神':'阴日取支上神'}（缀瑕）`};
+  }
+  function keSelect(){
+    if(zeiUps.length){const r=pick(zeiUps);return {...r,src:'贼'};}
+    const r=pick(keUps);return {...r,src:'克'};
+  }
+  const hasKe=zeiUps.length||keUps.length;
+
+  if(fuyin){
+    keti='伏吟课'; special=true;
+    if(hasKe){const r=keSelect();chu=r.b;detail=`天地盘同位。四课有${r.src==='贼'?'下贼上':'上克下'}，取${ZHI[chu]}发用`;}
+    else{chu=yang?k1.up:k3.up;detail=`天地盘同位，四课无克，${yang?'阳日取干上神':'阴日取支上神'}${ZHI[chu]}发用`;}
+    zhong=XING[chu];
+    if(zhong===chu){const other=chu===k1.up?k3.up:k1.up; zhong=other===chu?chong(chu):other; detail+=`；初传自刑，中传取${chu===k1.up?'支':'干'}上神${zhong===other?'':'之冲'}`;}
+    else detail+='；中传取初传所刑';
+    mo=XING[zhong];
+    if(mo===zhong||mo===chu){mo=chong(zhong);detail+='，末传遇自刑或回刑，取中传之冲';}
+    else detail+='，末传取中传所刑';
+  } else if(fanyin){
+    keti='返吟课'; special=true;
+    if(hasKe){const r=keSelect();chu=r.b;zhong=tian(chu);mo=tian(zhong);
+      detail=`天地盘相冲。四课有克，依${r.how==='one'?(r.src==='贼'?'下贼上':'上克下'):r.how}取${ZHI[chu]}发用${r.note?'（'+r.note+'）':''}；中末按天盘递取`;}
+    else{chu=yima(zhi);zhong=k3.up;mo=k1.up;detail=`天地盘相冲，四课无克（井栏射）：取日支驿马${ZHI[chu]}为初，支上神为中，干上神为末`;}
+  } else if(hasKe){
+    const r=keSelect();chu=r.b;zhong=tian(chu);mo=tian(zhong);
+    if(r.how==='one'){keti=r.src==='贼'?'重审课':'元首课';
+      detail=`四课中${ZHI[chu]}${r.src==='贼'?'被下所贼（下贼上）':'克下（上克下）'}，${r.src==='贼'?'有贼先取贼':'余课无克'}，取${ZHI[chu]}发用`;}
+    else{keti=r.how==='比用'?'比用课':'涉害课';detail=`${r.src==='贼'?'下贼上':'上克下'}不止一处。${r.note}，${ZHI[chu]}发用`;}
+  } else if(JIGONG[gan]===zhi){
+    keti='八专课'; special=true;
+    chu=yang?mod(k1.up+2,12):mod(k4.up-2,12); zhong=mo=k1.up;
+    detail=`干支同位，四课无克。${yang?'阳日自干上神顺数三位':'阴日自四课上神逆数三位'}得${ZHI[chu]}为初，中末皆取干上神`;
+  } else {
+    const ups=uniq([k2.up,k3.up,k4.up]);
+    const shenKeRi=ups.filter(b=>ke(ZWX[b],GWX[gan]));
+    const riKeShen=ups.filter(b=>ke(GWX[gan],ZWX[b]));
+    const pool=shenKeRi.length?shenKeRi:riKeShen;
+    if(pool.length){
+      keti='遥克课';
+      let b=pool[0];if(pool.length>1){const bi=pool.filter(x=>x%2===gan%2);b=(bi[0]??pool[0]);}
+      chu=b;zhong=tian(chu);mo=tian(zhong);
+      detail=shenKeRi.length?`四课无上下克，上神${ZHI[chu]}遥克日干（蒿矢），取为发用`:`四课无上下克，日干遥克上神${ZHI[chu]}（弹射），取为发用`;
+      if(pool.length>1) detail+=`；遥克者不止一个，取与日干阴阳相同者`;
+    } else {
+      const distinct=new Set(kes.map(k=>k.up+'-'+k.down.t+k.down.v)).size;
+      special=true;
+      if(distinct===4){
+        keti='昴星课';
+        if(yang){chu=tian(9);zhong=k3.up;mo=k1.up;detail=`四课全备而无克无遥克。阳日仰视地盘酉上神${ZHI[chu]}为初，支上神为中，干上神为末`;}
+        else{chu=seat(9);zhong=k1.up;mo=k3.up;detail=`四课全备而无克无遥克。阴日俯视天盘酉所临地盘${ZHI[chu]}为初，干上神为中，支上神为末`;}
+      } else {
+        keti='别责课';
+        if(yang){const hg=(gan+5)%10;chu=tian(JIGONG[hg]);detail=`四课不备而无克无遥克。阳日取日干之合${GAN[hg]}寄宫上神${ZHI[chu]}为初`;}
+        else{const g=SANHE[group(zhi)];chu=g[(g.indexOf(zhi)+1)%3];detail=`四课不备而无克无遥克。阴日取日支三合前一辰${ZHI[chu]}为初`;}
+        zhong=mo=k1.up;detail+='，中末皆取干上神';
+      }
+    }
+  }
+
+  // 十二天将
+  const isDay=shi>=3&&shi<=8;
+  const gr=GUIREN[gan][isDay?0:1];
+  const d0=seat(gr);
+  const dir=[11,0,1,2,3,4].includes(d0)?1:-1;
+  const genAtDi=d=>GENERALS[mod((d-d0)*dir,12)];
+  const genOf=b=>genAtDi(seat(b));
+  // 旬空 遁干
+  const xs=dayIdx-dayIdx%10, sb=xs%12;
+  const kong=[(sb+10)%12,(sb+11)%12];
+  const dun=b=>{const o=mod(b-sb,12);return o<10?GAN[o]:'';};
+  return {dayIdx,gan,zhi,yang,shi,jiang,monthZhi,tian,seat,kes,chu,zhong,mo,keti,detail,special,
+    isDay,gr,d0,dir,genAtDi,genOf,kong,dun};
+}
+
+/* ---------- 本命行年 ---------- */
+function benming(y){return mod(y-4,12);}
+function xingnian(age,sex){return sex==='m'?mod(2+age-1,60):mod(8-(age-1),60);}
+
+const LEAGUES={
+ '英超':[['阿森纳','Arsenal',1886],['切尔西','Chelsea',1905],['埃弗顿','Everton',1878],['莱斯特城','Leicester City',1884],['利物浦','Liverpool',1892],['曼城','Manchester City',1880],['曼联','Manchester United',1878],['托特纳姆热刺','Tottenham Hotspur',1882]],
+ '西甲':[['马德里竞技','Atletico de Madrid',1903],['巴塞罗那','Barcelona',1899],['奥萨苏纳','CA Osasuna',1920],['赫塔费','Getafe CF',1983],['皇家马德里','Real Madrid',1902],['皇家社会','Real Sociedad',1909],['塞维利亚','Sevilla',1890],['瓦伦西亚','Valencia CF',1919]],
+ '德甲':[['比勒费尔德','Arminia Bielefeld',1905],['勒沃库森','Bayer 04 Leverkusen',1904],['拜仁慕尼黑','Bayern Munchen',1900],['多特蒙德','Borussia Dortmund',1909],['科隆','FC Koln',1948],['美因茨','FSV Mainz 05',1905]],
+ '意甲':[['AC米兰','AC Milan',1899],['罗马','AS Roma',1927],['亚特兰大','Atalanta',1907],['国际米兰','Inter Milan',1908],['尤文图斯','Juventus',1897],['拉齐奥','Lazio',1900],['那不勒斯','Napoli',1926],['都灵','Torino',1906],['乌迪内斯','Udinese',1896]],
+ '法甲':[['摩纳哥','AS Monaco',1924],['波尔多','Girondins de Bordeaux',1881],['里尔','Lille OSC',1944],['里昂','Olympique Lyonnais',1950],['马赛','Olympique de Marseille',1899],['巴黎圣日耳曼','Paris Saint Germain',1970]]
+};
+const GOODG=['贵人','六合','青龙','太常','太阴','天后'];
+const SHENGSHU=[3,2,5,4,1]; // 木3 火2 土5 金4 水1（五行生数）
+function teamGoals(r,useGan,team,oppGan,opp){
+  const st=[];const sc=[r.chu,r.zhong,r.mo];
+  const bm=benming(team[2]), yong=r.tian(bm);           // 用神：本命上神（天盘临本命之支）
+  const obm=benming(opp[2]), oyong=r.tian(obm);
+  const side=useGan?r.kes[0].up:r.kes[2].up;            // 我方干/支上神
+  const label=useGan?'干上神':'支上神';
+  const w=ZWX[yong];
+  let n=0;
+  st.push(`用神：本命${ZHI[bm]}上见${ZHI[yong]}（${WXN[w]}）。一象一球，从 0 起数`);
+  const ws=wangshuai(r.monthZhi,yong);
+  if(ws==='旺'||ws==='相'){n+=1;st.push(`用神${ws}（得令有力），加一 → ${n}`);}
+  else st.push(`用神${ws}（失令），不加`);
+  const g=r.genAtDi(bm);
+  if(['青龙','六合','贵人'].includes(g)){n+=1;st.push(`用神乘${g}（得助），加一 → ${n}`);}
+  else if(['天空','白虎'].includes(g)){n-=1;st.push(`用神乘${g}（${g==='天空'?'虚耗':'伤损'}），减一 → ${Math.max(n,0)}`);}
+  else st.push(`用神乘${g}，不增减`);
+  if(ke(ZWX[side],ZWX[oyong])){n+=1;st.push(`我方${label}${ZHI[side]}克对方用神${ZHI[oyong]}（攻），加一 → ${n}`);}
+  const oside=oppGan?r.kes[0].up:r.kes[2].up;
+  if(ke(ZWX[oside],w)){n-=1;st.push(`对方${oppGan?'干':'支'}上神${ZHI[oside]}克我用神（受制），减一 → ${Math.max(n,0)}`);}
+  const ci=sc.indexOf(yong);
+  if(ci>=0){n+=1;st.push(`用神入${'初中末'[ci]}传（动而有为），加一 → ${n}`);}
+  if(sheng(ZWX[r.mo],w)&&ci!==2){n+=1;st.push(`末传${ZHI[r.mo]}生用神（结果得助），加一 → ${n}`);}
+  if(ke(ZWX[r.mo],w)){n-=1;st.push(`末传${ZHI[r.mo]}克用神（后劲受阻），减一 → ${Math.max(n,0)}`);}
+  if(r.kong.includes(yong)){n=0;st.push(`用神${ZHI[yong]}落空亡（用神落空，事情暂时难成） → 0`);}
+  n=Math.max(0,n);
+  return {n,st,yong};
+}
+const GENWX={贵人:2,螣蛇:1,朱雀:1,六合:0,勾陈:2,青龙:0,天空:2,白虎:3,太常:2,玄武:4,太阴:3,天后:4};
+function wuziDun(gan,b){return GAN[mod((gan%5)*2+b,10)];} // 五子元遁：甲己起甲子
+function relTxt(aN,a,bN,b){ if(a===b) return `${aN}与${bN}比和`; if(ke(a,b)) return `${aN}克${bN}`; if(ke(b,a)) return `${bN}克${aN}`; if(sheng(a,b)) return `${aN}生${bN}`; return `${bN}生${aN}`;}
+// 综合胜负：我=主队，他=客队
+function judge(r,hostGan,difen,H,A){
+  const v=[];const add=(w,txt)=>v.push([w,txt]); // w>0 主, <0 客
+  const me=r.tian(benming(H[2])), he=r.tian(benming(A[2]));  // 我=主队用神，他=客队用神
+  const mw=ZWX[me], hw=ZWX[he], mws=wangshuai(r.monthZhi,me), hws=wangshuai(r.monthZhi,he);
+  const mStrong=mws==='旺'||mws==='相', hStrong=hws==='旺'||hws==='相';
+  // 1 我他生克
+  if(ke(hw,mw)) add(-2,`他克我：客方${zw(he)}克主方${zw(me)} → 主输`);
+  else if(ke(mw,hw)) add(2,`我克他：主方${zw(me)}克客方${zw(he)} → 主赢`);
+  else if(mw===hw) add(0,`比和：${zw(me)}与${zw(he)}同类 → 无输无赢`);
+  else if(sheng(hw,mw)) add(mStrong?2:1,`他来生我：${zw(he)}生${zw(me)}${mStrong?'，且我'+mws+' → 大概率主赢':''}`);
+  else add(hStrong?-2:-1,`我生他：${zw(me)}生${zw(he)}，主方泄气${hStrong?'，他'+hws:''}`);
+  add(mStrong?1:0,`主队用神${ZHI[me]}${mws}${mStrong?'，临旺地':''}`);
+  add(hStrong?-1:0,`客队用神${ZHI[he]}${hws}${hStrong?'，得令':''}`);
+  // 2 金口诀
+  const di=difen==='shi'?r.shi:+difen;
+  const jiang=r.tian(di), gui=r.genAtDi(di), ren=wuziDun(r.gan,di);
+  const jw=ZWX[jiang], gw=GENWX[gui], rw=GWX[GAN.indexOf(ren)];
+  const jk={di:ZHI[di],jiang:ZHI[jiang],gui,ren};
+  let g='';
+  if(ke(gw,rw)){add(1,`金口诀：贵神${gui}（${WXN[gw]}）克人元${ren}（${WXN[rw]}）→ 我赢`);g='贵神克人元';}
+  else if(ke(rw,gw)){add(-1,`金口诀：人元${ren}（${WXN[rw]}）克贵神${gui}（${WXN[gw]}）→ 我输`);g='人元克贵神';}
+  else add(0,`金口诀：${relTxt('贵神'+gui+'（'+WXN[gw]+'）',gw,'人元'+ren+'（'+WXN[rw]+'）',rw)}，不论输赢`);
+  if(ke(jw,rw)) add(1,`将神${ZHI[jiang]}（我）克人元${ren}（他）→ 他输`);
+  else if(ke(rw,jw)) add(-1,`人元${ren}（他）克将神${ZHI[jiang]}（我）→ 我输`);
+  else add(0,`将神${ZHI[jiang]}与人元${ren}：${relTxt('将神',jw,'人元',rw)}，不论输赢`);
+  // 3 课体与三传
+  const notes=[];const sc=[r.chu,r.zhong,r.mo];
+  if(r.keti==='伏吟课'||r.keti==='返吟课') notes.push(`${r.keti}：反复、波动大`);
+  const ni=mod(sc[0]-sc[1],12)===1&&mod(sc[1]-sc[2],12)===1, shun=mod(sc[1]-sc[0],12)===1&&mod(sc[2]-sc[1],12)===1;
+  if(ni) notes.push('三传逆连茹：先逆后顺、先输后赢');
+  if(shun) notes.push('三传顺连茹：顺势推进');
+  const kongs=[me,he,...sc].filter(b=>r.kong.includes(b));
+  if(kongs.length) notes.push(`旬空（${[...new Set(kongs)].map(b=>ZHI[b]).join('、')}）：事有虚诈、结果易变`);
+  const dg=sc.map(b=>r.dun(b));
+  const sanqi=['乙','丙','丁'].every(x=>dg.includes(x));
+  const caiDong=sc.some(b=>liuqin(r.gan,b)==='妻财');
+  if(sanqi) notes.push(`三奇全备（三传遁干${dg.join('')}）：后赢${caiDong?'':'，但财爻不动，赢不多'}`);
+  const total=v.reduce((a,x)=>a+x[0],0);
+  const weak=!mStrong&&!hStrong;
+  let res=total>=2?'主胜':total<=-2?'客胜':'平局';
+  return {v,total,res,weak,notes,jk,sanqi,caiDong,me,he};
+}
+function finalScore(h,a,J){
+  let fh=h, fa=a; const adj=[];
+  const raw=fh>fa?'主胜':fh<fa?'客胜':'平局';
+  const t=J.total;
+  const res=t>0?'主胜':t<0?'客胜':'平局';      // 胜负以课象断：我胜他、他胜我、比和
+  if(res==='平局'&&raw!=='平局'){const m=Math.min(fh,fa);adj.push(`课断比和，取双方较小球数 ${m}（比和或双方均弱 → 平局或小比分）`);fh=fa=m;}
+  else if(res==='主胜'&&fh<=fa){fh=fa+1;adj.push(`课断主胜，主队取 ${fh} 球`);}
+  else if(res==='客胜'&&fa<=fh){fa=fh+1;adj.push(`课断客胜，客队取 ${fa} 球`);}
+  if(J.sanqi&&!J.caiDong&&Math.abs(fh-fa)>1){if(fh>fa)fh=fa+1;else fa=fh+1;adj.push('三奇而财爻不动，赢不多，净胜 1 球');}
+  return {fh,fa,adj,raw,res,t};
+}
+function teamSide(r,useGan,team,opp,oppGan){
+  const f=[];const add=(p,t)=>f.push([p,t]);
+  const sanchuan=[r.chu,r.zhong,r.mo];
+  const up=useGan?r.kes[0].up:r.kes[2].up;
+  const oppUp=oppGan?r.kes[0].up:r.kes[2].up;
+  const label=useGan?'日干':'日支';
+  const ws=wangshuai(r.monthZhi,up);
+  add(ws==='旺'||ws==='相'?1:-1,`${label}上神${ZHI[up]}${ws}`);
+  if(r.kong.includes(up)) add(-2,`${label}上神${ZHI[up]}落空`);
+  if(ke(ZWX[up],ZWX[oppUp])) add(1,`我方上神${ZHI[up]}克对方上神${ZHI[oppUp]}`);
+  if(ke(ZWX[oppUp],ZWX[up])) add(-1,`被对方上神${ZHI[oppUp]}所克`);
+  const mo=r.mo;
+  if(sheng(ZWX[mo],ZWX[up])) add(1,`末传${ZHI[mo]}生我方上神`);
+  if(ke(ZWX[mo],ZWX[up])) add(-1,`末传${ZHI[mo]}克我方上神`);
+  const bm=benming(team[2]), bup=r.tian(bm);
+  const bws=wangshuai(r.monthZhi,bup);
+  add(bws==='旺'||bws==='相'?1:-1,`本命${ZHI[bm]}上见${ZHI[bup]}，${bws}`);
+  if(r.kong.includes(bm)||r.kong.includes(bup)) add(-2,`本命或其上神落空`);
+  if(sanchuan.includes(bup)||sanchuan.includes(bm)) add(1,`本命${sanchuan.includes(bm)?'':'上神'}入传`);
+  const g=r.genAtDi(bm);
+  add(GOODG.includes(g)?1:-1,`本命乘${g}（${GOODG.includes(g)?'偏吉':'偏凶'}将）`);
+  const obm=benming(opp[2]);
+  if(ke(ZWX[bm],ZWX[obm])) add(1,`本命${ZHI[bm]}克对方本命${ZHI[obm]}`);
+  if(ke(ZWX[obm],ZWX[bm])) add(-1,`本命被对方本命${ZHI[obm]}所克`);
+  return {f,score:f.reduce((a,x)=>a+x[0],0),bm,label};
+}
+
+
+const SEED=`2026-10-02 12:15|Real Sociedad|CA Osasuna|1:1
+2026-10-02 12:15|Getafe CF|Valencia CF|1:1
+2026-10-02 12:01|Atletico de Madrid|AC Milan|2:3
+2026-10-02 12:01|Barcelona|Chelsea|4:2
+2026-10-02 12:01|AS Roma|Torino|0:2
+2026-10-02 12:01|Atalanta|AS Monaco|0:0
+2026-10-02 12:01|Bayern Munchen|Juventus|1:1
+2026-10-02 12:01|Olympique Lyonnais|Paris Saint Germain|1:3
+2026-10-02 12:30|Manchester City|Manchester United|1:3
+2026-10-02 12:45|Bayern Munchen|Napoli|1:2
+2026-10-02 13:00|Juventus|Atalanta|1:3
+2026-10-02 12:30|Girondins de Bordeaux|Lille OSC|1:0
+2026-10-02 13:00|Liverpool|Sevilla|2:5
+2026-10-02 13:00|Udinese|Barcelona|1:3
+2026-10-02 13:00|Paris Saint Germain|Valencia CF|2:0
+2026-10-02 13:00|Leicester City|AS Monaco|2:2
+2026-10-02 13:15|Bayer 04 Leverkusen|Manchester City|3:2
+2026-10-02 13:00|CA Osasuna|Getafe CF|3:1
+2026-10-02 13:15|Chelsea|Everton|4:3
+2026-10-02 12:45|Arminia Bielefeld|Atletico de Madrid|2:4
+2026-10-02 13:30|Inter Milan|Manchester United|0:2
+2026-10-02 13:30|Torino|AC Milan|1:1
+2026-10-02 13:30|Real Madrid|Real Sociedad|3:3
+2026-10-02 14:00|Atalanta|Paris Saint Germain|0:2
+2026-10-02 13:45|Napoli|Juventus|0:0
+2026-10-02 14:00|Atletico de Madrid|Lazio|1:1
+2026-10-02 14:00|Everton|Olympique de Marseille|1:2
+2026-10-02 14:00|Getafe CF|Sevilla|1:2
+2026-10-02 14:00|Leicester City|Manchester City|0:1
+2026-10-02 13:30|FC Koln|Tottenham Hotspur|1:1
+2026-10-02 13:45|Barcelona|Liverpool|1:2
+2026-10-02 13:30|Bayern Munchen|Arminia Bielefeld|0:0
+2026-10-02 13:30|FSV Mainz 05|Lille OSC|0:1
+2026-10-02 14:00|AS Monaco|Udinese|1:2
+2026-10-02 14:15|AS Roma|Bayer 04 Leverkusen|0:1
+2026-10-02 14:15|AC Milan|Borussia Dortmund|2:0
+2026-10-02 15:15|Olympique de Marseille|Liverpool|0:2
+2026-10-02 15:30|Bayern Munchen|Real Sociedad|1:2
+2026-10-02 15:30|Getafe CF|Juventus|1:4
+2026-10-02 15:30|FC Koln|Chelsea|0:0
+2026-10-02 15:30|Manchester City|Torino|2:2
+2026-10-02 15:15|Bayer 04 Leverkusen|Napoli|0:1
+2026-10-02 15:30|Paris Saint Germain|Arminia Bielefeld|2:1
+2026-10-02 15:30|Tottenham Hotspur|AS Roma|2:0
+2026-10-02 17:00|Atalanta|AS Monaco|0:1
+2026-10-02 17:00|Juventus|Tottenham Hotspur|0:3
+2026-10-02 15:45|Inter Milan|Arsenal|6:0
+2026-10-02 15:45|FSV Mainz 05|Lazio|1:1
+2026-10-02 16:30|Inter Milan|AS Roma|2:1
+2026-10-02 16:00|Girondins de Bordeaux|Olympique Lyonnais|0:1
+2026-10-02 16:00|Udinese|CA Osasuna|0:1
+2026-10-02 16:15|Juventus|Barcelona|2:2
+2026-10-02 16:30|Getafe CF|Atletico de Madrid|2:2
+2026-10-02 16:00|Borussia Dortmund|Liverpool|0:0
+2026-10-02 16:00|Olympique de Marseille|Sevilla|0:2
+2026-10-02 16:00|Valencia CF|AC Milan|1:2
+2026-10-02 16:00|Bayer 04 Leverkusen|Real Madrid|1:1
+2026-10-02 16:15|Leicester City|AS Monaco|2:1
+2026-10-02 17:15|Arminia Bielefeld|FC Koln|1:3
+2026-10-02 16:45|Lazio|Napoli|2:2
+2026-10-02 16:45|Manchester City|Liverpool|2:3
+2026-10-02 17:15|Arsenal|Everton|2:2
+2026-10-02 17:45|Leicester City|Sevilla|1:1
+2026-10-02 18:00|Bayer 04 Leverkusen|CA Osasuna|1:0
+2026-10-02 17:45|AS Roma|Udinese|0:2
+2026-10-02 18:00|Juventus|Arsenal|3:2
+2026-10-02 17:30|Liverpool|Real Sociedad|1:0
+2026-10-02 17:30|FSV Mainz 05|Olympique de Marseille|3:2`;
+const $=id=>document.getElementById(id);
+const ALL=Object.entries(LEAGUES).flatMap(([lg,ts])=>ts.map(t=>({lg,t})));
+const byEn=n=>ALL.find(x=>x.t[1].toLowerCase()===n.trim().toLowerCase());
+function opts(sel,items,val){sel.innerHTML=items.map(([v,t])=>`<option value="${v}">${t}</option>`).join('');if(val!==undefined)sel.value=val;}
+const lgs=Object.keys(LEAGUES);
+function fill(l,t,def){opts($(t),LEAGUES[$(l).value].map((x,i)=>[i,`${x[0]}（${x[1]}）`]),def??0);}
+opts($('hl'),lgs.map(l=>[l,l]),'英超');opts($('al'),lgs.map(l=>[l,l]),'英超');fill('hl','ht',5);fill('al','at',4);
+opts($('df'),[['shi','用占时作地分'],...ZHI.map((z,i)=>[i,`报数 ${i+1} → ${z}`])],'shi');
+
+function nowMY(){const n=new Date(Date.now()+8*3600000).toISOString();return [n.slice(0,10),n.slice(11,16)];}
+function setNow(){const [d,t]=nowMY();$('d').value=d;$('t').value=t;}
+setNow();
+
+function predict(dateStr,timeStr,H,A,difen){
+  const [y,m,d]=dateStr.split('-').map(Number),[h,mi]=timeStr.split(':').map(Number);
+  const L=sunLon(Date.UTC(y,m-1,d,h-8,mi));
+  const dayIdx=mod(jdn(y,m,d)+49,60), shi=Math.floor(((h+1)%24)/2);
+  const r=compute(dayIdx,shi,jiangFromLon(L),monthFromLon(L));
+  const hg=teamGoals(r,false,H,true,A), ag=teamGoals(r,true,A,false,H);
+  const J=judge(r,false,difen,H,A); const F=finalScore(hg.n,ag.n,J);
+  return {r,hg,ag,J,F};
+}
+
+let logStore=null;
+function loadLog(){try{logStore=localStorage.getItem('liuren_log');}catch(e){} return logStore??SEED;}
+function parseLog(txt){const out=[],bad=[];
+  txt.split('\n').map(s=>s.trim()).filter(Boolean).forEach((line,i)=>{
+    const p=line.split('|');const m=p[0]&&p[0].match(/^(\d{4}-\d{2}-\d{2})\s+(\d{1,2}:\d{2})$/);
+    const H=p[1]&&byEn(p[1]),A=p[2]&&byEn(p[2]),s=p[3]&&p[3].match(/^(\d+)\s*:\s*(\d+)$/);
+    if(p.length!==4||!m||!H||!A||!s){bad.push(i+1);return;}
+    out.push({date:m[1],time:m[2].padStart(5,'0'),H:H.t,A:A.t,x:+s[1],y:+s[2]});});
+  out.sort((p,q)=>(p.date+p.time).localeCompare(q.date+q.time));
+  return {out,bad};}
+$('log').value=loadLog();
+$('saveLog').onclick=()=>{const {out,bad}=parseLog($('log').value);
+  try{localStorage.setItem('liuren_log',$('log').value);$('logMsg').textContent=`已保存 ${out.length} 场`+(bad.length?`，第 ${bad.join('、')} 行格式不对已略过`:'');}
+  catch(e){$('logMsg').textContent=`这台设备不能保存，本次先用 ${out.length} 场`;}
+  render();};
+$('resetLog').onclick=()=>{$('log').value=SEED;try{localStorage.removeItem('liuren_log');}catch(e){}$('logMsg').textContent='已恢复预载的 68 场';render();};
+
+const resName=(x,y)=>x>y?'主胜':x<y?'客胜':'平局';
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function render(){
+  const H=LEAGUES[$('hl').value][+$('ht').value], A=LEAGUES[$('al').value][+$('at').value];
+  $('err').hidden=H!==A; $('err').textContent='主客队不能是同一支球队，请重新选择。';
+  $('hn').textContent=H[0];$('an').textContent=A[0];
+  if(H===A||!$('d').value||!$('t').value) return;
+  const P=predict($('d').value,$('t').value,H,A,$('df').value);const {r,hg,ag,J,F}=P;
+  $('score').textContent=`${F.fh} : ${F.fa}`;
+  $('res').innerHTML=`<span style="color:${F.res==='主胜'?'var(--home)':F.res==='客胜'?'var(--away)':'var(--warn)'}">${F.res}</span>`;
+  $('when').textContent=`${$('d').value} ${$('t').value} 开球 · ${H[1]} vs ${A[1]}`;
+  $('extra').textContent=`总进球 ${F.fh+F.fa}：${F.fh+F.fa>=3?'大':'小'}（2.5）· ${(F.fh+F.fa)%2?'单':'双'}`+(F.adj.length?` · ${F.adj.join('；')}`:'');
+  // 一 排盘
+  $('gz').textContent=ganzhi(r.dayIdx)+'日';
+  $('sj').textContent=`${ZHI[r.shi]}时 · ${ZHI[r.jiang]}将（${JNAME[r.jiang]}）· ${r.isDay?'昼':'夜'}`;
+  $('kt').textContent=r.keti;$('kg').textContent=r.kong.map(b=>ZHI[b]).join('');
+  const k=r.kes;
+  $('ke').innerHTML=`<tr><td style="color:var(--mute)">天将</td><td></td>${k.map(x=>`<td>${r.genOf(x.up)}</td>`).join('')}</tr>
+   <tr><td style="color:var(--mute)">上神</td><td></td>${k.map(x=>`<td class="serif font-black text-lg">${ZHI[x.up]}</td>`).join('')}</tr>
+   <tr><td style="color:var(--mute)">下神</td><td></td>${k.map(x=>`<td>${x.down.t==='g'?GAN[x.down.v]:ZHI[x.down.v]}</td>`).join('')}</tr>
+   <tr><td style="color:var(--mute)">生克</td><td></td>${k.map(x=>`<td class="${x.zei||x.kexia?'no':''}">${x.zei?'下贼上':x.kexia?'上克下':'—'}</td>`).join('')}</tr>`;
+  const sc=[r.chu,r.zhong,r.mo];
+  $('sc').innerHTML=`<span style="color:var(--mute)">三传：</span>`+sc.map((b,i)=>`<b class="serif">${'初中末'[i]} ${ZHI[b]}</b> <span class="pill">${liuqin(r.gan,b)} · ${r.genOf(b)}${r.kong.includes(b)?' · 空':''}</span>`).join(' → ')+`<div class="text-xs mt-1" style="color:var(--mute)">${esc(r.detail)}</div>`;
+  const stepCol=(t,g,c)=>`<div class="p-3 rounded-lg" style="background:#0f172a"><b style="color:${c}">${t} ${g.n} 球</b><ol class="list-decimal pl-4 mt-1 space-y-0.5">${g.st.map(s=>`<li>${esc(s)}</li>`).join('')}</ol></div>`;
+  $('steps').innerHTML=stepCol(H[0],hg,'var(--home)')+stepCol(A[0],ag,'var(--away)');
+  $('judge').innerHTML=`<div class="font-bold mb-1">胜负断法（我 = 主队用神，他 = 客队用神）· 合计 ${J.total>0?'+':''}${J.total}</div>`+
+    J.v.map(([p,t])=>`<div><span class="tab ${p>0?'ok':p<0?'no':''}" style="display:inline-block;width:2.2em">${p>0?'+':''}${p}</span>${esc(t)}</div>`).join('')+
+    `<div class="mt-1" style="color:var(--mute)">金口诀：地分 ${J.jk.di} · 将神 ${J.jk.jiang} · 贵神 ${J.jk.gui} · 人元 ${J.jk.ren}${J.notes.length?' · '+J.notes.join('；'):''}</div>`;
+  // 二 盘口
+  const o=['o1','ox','o2'].map(id=>parseFloat($(id).value));
+  if(o.every(v=>v>1)){const inv=o.map(v=>1/v),s=inv.reduce((a,b)=>a+b,0),p=inv.map(v=>v/s);
+    const fav=['主胜','平局','客胜'][p.indexOf(Math.max(...p))];
+    $('odds').innerHTML=`<div class="grid grid-cols-3 gap-2 text-center tab">${['主胜','平局','客胜'].map((n,i)=>`<div class="p-2 rounded-lg" style="background:#0f172a"><div class="text-xs" style="color:var(--mute)">${n} @${o[i]}</div><div class="text-lg font-bold">${(p[i]*100).toFixed(1)}%</div></div>`).join('')}</div>
+     <p class="text-xs mt-2" style="color:var(--mute)">由赔率换算的隐含概率（已扣除庄家抽水 ${((s-1)*100).toFixed(1)}%）。庄家看好：<b style="color:var(--ink)">${fav}</b>；六壬判：<b style="color:var(--ink)">${F.res}</b>${fav===F.res?'，两者一致':'，两者不一致'}。</p>`;}
+  else $('odds').innerHTML=`<p style="color:var(--mute)">未输入赔率。把平台上的主胜、和、客胜赔率抄进左边三个格子，这里会换算成概率，并和六壬结果对照。</p>`;
+  // 三 交锋近况
+  const {out:G}=parseLog($('log').value);
+  const h2h=G.filter(g=>(g.H===H&&g.A===A)||(g.H===A&&g.A===H));
+  const form=T=>{const gs=G.filter(g=>g.H===T||g.A===T);let w=0,d=0,l=0,gf=0,ga=0;
+    gs.forEach(g=>{const me=g.H===T?g.x:g.y,op=g.H===T?g.y:g.x;gf+=me;ga+=op;me>op?w++:me<op?l++:d++;});
+    const last=gs.slice(-5).map(g=>{const me=g.H===T?g.x:g.y,op=g.H===T?g.y:g.x;return me>op?'<span class="ok">胜</span>':me<op?'<span class="no">负</span>':'<span style="color:var(--warn)">平</span>';}).join(' ');
+    return gs.length?`${gs.length} 场 ${w}胜${d}平${l}负 · 进${gf} 失${ga} · 最近：${last}`:'记录里还没有这支球队';};
+  $('hist').innerHTML=`<div><b style="color:var(--home)">${H[0]}</b>：${form(H)}</div><div><b style="color:var(--away)">${A[0]}</b>：${form(A)}</div>
+   <div><span style="color:var(--mute)">两队交锋：</span>${h2h.length?h2h.map(g=>`${g.date.slice(5)} ${g.time} ${g.H[0]} ${g.x}:${g.y} ${g.A[0]}`).join('；'):'记录里没有交锋'}</div>`;
+  // 四 命中记录
+  if(!G.length){$('rec').innerHTML='<p style="color:var(--mute)">赛果记录是空的。</p>';return;}
+  let w=0,e=0;const rows=G.map(g=>{const q=predict(g.date,g.time,g.H,g.A,$('df').value).F;const okw=q.res===resName(g.x,g.y),oke=q.fh===g.x&&q.fa===g.y;w+=okw;e+=oke;return {g,q,okw,oke};});
+  $('rec').innerHTML=`<p>用同样的规则回算记录里的 ${G.length} 场：胜负对 <b>${w}</b> 场，比分对 <b>${e}</b> 场。</p>
+   <div class="overflow-x-auto mt-2"><table class="mini text-xs tab"><thead><tr style="color:var(--mute)"><th>开球</th><th>对阵</th><th>六壬</th><th>实际</th><th>胜负</th><th>比分</th></tr></thead><tbody>${rows.slice(-12).reverse().map(({g,q,okw,oke})=>`<tr><td>${g.date.slice(5)} ${g.time}</td><td>${g.H[0]} – ${g.A[0]}</td><td>${q.fh}:${q.fa}</td><td>${g.x}:${g.y}</td><td class="${okw?'ok':'no'}">${okw?'✓':'✗'}</td><td class="${oke?'ok':''}">${oke?'✓':''}</td></tr>`).join('')}</tbody></table></div>
+   <p class="text-xs mt-1" style="color:var(--mute)">表格只列最近 12 场。</p>`;
+}
+$('hl').addEventListener('input',()=>{fill('hl','ht');render();});
+$('al').addEventListener('input',()=>{fill('al','at');render();});
+['ht','at','df','o1','ox','o2'].forEach(id=>$(id).addEventListener('input',render));
+['d','t'].forEach(id=>$(id).addEventListener('input',()=>{$('follow').checked=false;render();}));
+$('follow').addEventListener('input',()=>{if($('follow').checked){setNow();render();}});
+setInterval(()=>{if($('follow').checked){const [d,t]=nowMY();if(d!==$('d').value||t!==$('t').value){$('d').value=d;$('t').value=t;render();}}},15000);
+let LAST=null;
+const _render=render;
+render=function(){_render();try{const H=LEAGUES[$('hl').value][+$('ht').value],A=LEAGUES[$('al').value][+$('at').value];if(H!==A)LAST={H,A,P:predict($('d').value,$('t').value,H,A,$('df').value)};}catch(e){}};
+try{$('gkey').value=localStorage.getItem('gemini_key')||'';}catch(e){}
+$('gsave').onclick=()=>{try{localStorage.setItem('gemini_key',$('gkey').value.trim());gmsg('金钥已保存在这台设备。');}catch(e){gmsg('这台设备不能保存金钥，本次仍可使用。');}};
+$('gforget').onclick=()=>{$('gkey').value='';try{localStorage.removeItem('gemini_key');}catch(e){}gmsg('金钥已删除。');};
+function gmsg(t){$('gout').hidden=false;$('gout').textContent=t;}
+function brief(){
+  const {H,A,P}=LAST;const {r,hg,ag,J,F}=P;const sc=[r.chu,r.zhong,r.mo];
+  const o=['o1','ox','o2'].map(id=>$(id).value.trim());
+  return [`比赛：SABA 188 Club Friendly Virtual PES 21（15分钟虚拟赛），${H[0]}（主）对 ${A[0]}（客），开球 ${$('d').value} ${$('t').value}（马来西亚时间）。`,
+  `排盘：${ganzhi(r.dayIdx)}日 ${ZHI[r.shi]}时 ${ZHI[r.jiang]}将，${r.isDay?'昼':'夜'}占，课体 ${r.keti}，旬空 ${r.kong.map(b=>ZHI[b]).join('')}。`,
+  `四课：${r.kes.map((k,i)=>`${'一二三四'[i]}课 ${ZHI[k.up]}/${k.down.t==='g'?GAN[k.down.v]:ZHI[k.down.v]}`).join('；')}。`,
+  `三传：${sc.map((b,i)=>`${'初中末'[i]}${ZHI[b]}（${liuqin(r.gan,b)}，乘${r.genOf(b)}）`).join(' → ')}。${r.detail}`,
+  `主队取数：${hg.st.join('；')}，得 ${hg.n} 球。`,`客队取数：${ag.st.join('；')}，得 ${ag.n} 球。`,
+  `胜负断法：${J.v.map(([p,t])=>`${t}（${p>0?'+':''}${p}）`).join('；')}；合计 ${J.total}。${J.notes.join('；')}`,
+  `程序结果：${F.fh}:${F.fa}，${F.res}。${F.adj.join('；')}`,
+  o.every(Boolean)?`赔率：主胜 ${o[0]}，和 ${o[1]}，客胜 ${o[2]}。`:'未提供赔率。',
+  `近况（来自用户的赛果记录）：${$('hist').textContent.replace(/\s+/g,' ').trim()}`].join('\n');
+}
+$('gask').onclick=async()=>{
+  const key=$('gkey').value.trim();
+  if(!key){gmsg('请先贴上 Gemini API 金钥。');return;}
+  if(!LAST){gmsg('请先选好主客队。');return;}
+  gmsg('正在请 Gemini 解读，请稍候…');
+  const prompt=`你是熟悉大六壬的解读助手。下面是一场虚拟足球赛的大六壬排盘与程序取数结果。请用简体中文，按"课体基调 → 四课矛盾 → 三传过程 → 主客我他 → 结论"的顺序，用 200 到 350 字整理断课思路。只解读给出的资料，不要编造盘口、新闻或历史交锋，不要改动程序给出的比分，也不要宣称能保证命中。\n\n${brief()}`;
+  try{
+    const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+    const j=await res.json();
+    if(!res.ok){gmsg(`Gemini 返回错误（${res.status}）：${j.error?.message||'未知原因'}。请检查金钥是否正确、是否已启用 Gemini API。`);return;}
+    const txt=j.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('')||'';
+    gmsg(txt||'Gemini 没有返回内容，请再试一次。');
+  }catch(e){gmsg('连不上 Gemini。如果你是在 Claude 的预览页里打开，这里不允许连外部网站；请用独立的 HTML 文件，放到自己的网站（如 Render、GitHub Pages）或手机浏览器打开。');}
+};
+render();
+
+</script>
+</body>
+</html>
